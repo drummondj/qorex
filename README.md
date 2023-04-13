@@ -1,6 +1,7 @@
 # QOREx
 
-Quality Of Results Explorer takes data from a CSV file and display the data in a web app. 
+Quality Of Results Explorer takes data from a CSV file and displays the data in a web app.
+It uses the amazing open source `dash` package along with `dash_bootstrap_components` to make everything look nice.
 
 ## Getting Started
 

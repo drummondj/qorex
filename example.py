@@ -1,4 +1,4 @@
-from qor import Config, Group, Metric
+from qorex import Config, Group, Metric
 import pandas as pd
 
 CONFIG = Config(

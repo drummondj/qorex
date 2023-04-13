@@ -1,14 +1,15 @@
-from qor import Config, Group, Metric, start_server
-import click
+from qor import Config, Group, Metric
+import pandas as pd
 
-config = Config(
+CONFIG = Config(
     [
         Group(
             "Run Info",
             [
+                Metric("Timestamp", derive=lambda x: pd.to_datetime(x.Date + " " + x.Time)),
                 Metric("Date"),
                 Metric("Time"),
-                Metric("Block_name", rename="Block Name"),
+                Metric("Design"),
                 Metric("Version"),
                 Metric("Run"),
                 Metric("stage", rename="Stage"),
@@ -16,32 +17,24 @@ config = Config(
             is_run_search=True
         ),
         Group(
-            "PPA",
-            [
-                Metric("Total WNS(ps)", rename="Total WNS (ps)"),
-                Metric("total", rename="Total Power (mW)"),
-                Metric("Leaf_Cell_Area", rename="Leaf Cell Area (um2)"),
-            ]
-        ),
-        Group(
             "Timing",
             [
-                Metric("Total WNS(ps)", reverse=True),
-                Metric("Total TNS(ps)", reverse=True),
-                Metric("Total FEP"),
-                Metric("R2R WNS(ps)", reverse=True),
-                Metric("R2R TNS(ps)", reverse=True),
-                Metric("R2R FEP"),
+                Metric("All WNS (ps)", reverse=True),
+                Metric("All TNS (ps)", reverse=True),
+                Metric("All Violations"),
+                Metric("reg2reg WNS (ps)", reverse=True),
+                Metric("reg2reg TNS (ps)", reverse=True),
+                Metric("reg2reg Violations"),
             ]
         ),
         Group(
             "Power",
             [
-                Metric("internal", rename="Internal Power (mW)"),
-                Metric("switching", rename="Switching Power (mW)"),
-                Metric("dynamic", rename="Dynamic Power (mW)"),
-                Metric("leakage", rename="Leakage Power (mW)"),
-                Metric("total", rename="Total Power (mW)"),
+                Metric("internal_power", rename="Internal Power (mW)"),
+                Metric("switching_power", rename="Switching Power (mW)"),
+                Metric("dynamic_power", rename="Dynamic Power (mW)"),
+                Metric("leakage_power", rename="Leakage Power (mW)"),
+                Metric("total_power", rename="Total Power (mW)"),
             ]
         ),
         Group(
@@ -50,40 +43,8 @@ config = Config(
                 Metric("X(um)", rename="X (um)"),
                 Metric("Y(um)", rename="Y (um)"),
                 Metric("Area", rename="Area (um2)"),
-                Metric("Leaf_Cell_Area", rename="Leaf Cell Area (um2)"),
+                Metric("Cell Area", rename="Leaf Cell Area (um2)"),
                 Metric("Utilization"),
-            ]
-        ),
-        Group(
-            "Cell Counts",
-            [
-                Metric("Cell_count", rename="Total Cell Count"),
-                Metric("Buf/inv"),
-                Metric("Logic"),
-                Metric("Flops"),
-                Metric("Bits"),
-                Metric("Removed_seq"),
-                Metric("num_of_ports"),
-            ]
-        ),
-        Group(
-            "Vt",
-            [
-                Metric("%svt"),
-                Metric("%lvtll"),
-                Metric("%lvt"),
-                Metric("%ulvtll"),
-                Metric("%ulvt")
-            ]
-        ),
-        Group(
-            "Multi Bit",
-            [
-                Metric("Bank_ratio"), 
-                Metric("2_multibit"),
-                Metric("4_multibit"),
-                Metric("6_multibit"),
-                Metric("8_multibit"),
             ]
         ),
         Group(
@@ -103,11 +64,3 @@ config = Config(
         )
     ]
 )
-
-@click.command()
-@click.option('--csv', help='Name of CSV file to read')
-def cli(csv):
-    start_server(csv, config)
-
-if __name__ == "__main__":
-    cli()

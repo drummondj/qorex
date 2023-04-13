@@ -1,17 +1,17 @@
 from dataclasses import dataclass
-from dash import Dash, dash_table, dcc, html
+from dash import Dash, dash_table, html
 from dash.dependencies import Input, Output
-import click
 import pandas as pd
 import dash_bootstrap_components as dbc
-import importlib.util
-import sys
+import click
+import os
 
 @dataclass
 class Metric:
     name: str
     rename: str = None
     reverse: bool = False
+    derive: callable = None
 
 @dataclass
 class Group:
@@ -47,11 +47,24 @@ class Config:
                 if metric.rename:
                     name_map[metric.name] = metric.rename
         return name_map
-        
+    
+    def all_group_metrics(self) -> list[Metric]:
+        metrics = []
+        for group in self.groups:
+            for metric in group.metrics:
+                metrics.append(metric)
+        return metrics
+    
+    def derived_metrics(self) -> list[Metric]:
+        return [metric for metric in self.all_group_metrics() if metric.derive is not None]
 
-def start_server(csv: str, config: Config):
+def start_server(csv: str, config: Config, debug: bool = False):
 
     df = pd.read_csv(csv)
+    
+    for metric in config.derived_metrics():
+        df = df.assign(**{metric.name:metric.derive})
+
     app = Dash(title="QOR Explorer", external_stylesheets=[dbc.themes.BOOTSTRAP])
 
     non_hidden_group_names = [group.name for group in config.groups if not group.is_hidden]
@@ -76,7 +89,7 @@ def start_server(csv: str, config: Config):
                     columns=[
                         {"name": i, "id": i} for i in df.columns if i in  config.run_info_metric_names()
                     ],
-                    data=df.sort_values(by=["Date", "Time"], ascending=False).to_dict(
+                    data=df.sort_values(by=["Timestamp"], ascending=False).to_dict(
                         "records"
                     ),
                     filter_action="native",
@@ -206,7 +219,7 @@ def start_server(csv: str, config: Config):
                 style={"width": "auto"},
             )
         ]
-    app.run_server(debug=True)
+    app.run_server(debug=debug)
 
 def group_selectors(group_names):
     options = []
@@ -233,4 +246,23 @@ def convert_str(s: str) -> any:
     except:
         return s
 
+@click.command()
+@click.option('--csv', help='Name of CSV file to read')
+@click.option('--config', help='Name of config file to read')
+@click.option('--debug', is_flag=True, default=False, help='Run server in debug mode')
+def cli(csv, config, debug):
+    config_file = os.path.splitext(config)[0]
+    try:
+        config_module = __import__(config_file)
+    except ImportError:
+        print(f'Error: could not import configuration from {config_file}.py')
+        return
+    config_data = getattr(config_module, f'CONFIG', None)
+    if not config_data:
+        print(f'Error: {config_file}.py does not define a CONFIG variable')
+        return
 
+    start_server(csv, config_data, debug)
+
+if __name__ == "__main__":
+    cli()

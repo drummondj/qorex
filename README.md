@@ -4,7 +4,7 @@ Quality Of Results Explorer takes data from a CSV file and display the data in a
 
 ## Getting Started
 
-You need to have Python 3.10 or later installed. Then do the following:
+You need to have Python 3.10 or later installed (check with `python --version`). Then do the following:
 
 ```
 git clone git@github.com:drummondj/qorex.git

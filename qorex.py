@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+import importlib
 from dash import Dash, dash_table, html
 from dash.dependencies import Input, Output
 import pandas as pd
 import dash_bootstrap_components as dbc
 import click
 import os
+
 
 @dataclass
 class Metric:
@@ -13,12 +15,14 @@ class Metric:
     reverse: bool = False
     derive: callable = None
 
+
 @dataclass
 class Group:
     name: str
     metrics: list[Metric]
     is_run_search: bool = False
     is_hidden: bool = False
+
 
 @dataclass
 class Config:
@@ -32,7 +36,7 @@ class Config:
                     run_info_metric_names.append(metric.name)
         return run_info_metric_names
 
-    def reverse_metrics(self)  -> list[str]:
+    def reverse_metrics(self) -> list[str]:
         reverse_metrics = []
         for group in self.groups:
             for metric in group.metrics:
@@ -40,34 +44,38 @@ class Config:
                     reverse_metrics.append(metric.name)
         return reverse_metrics
 
-    def key_name_map(self)  -> dict[str,str]:
+    def key_name_map(self) -> dict[str, str]:
         name_map = {}
         for group in self.groups:
             for metric in group.metrics:
                 if metric.rename:
                     name_map[metric.name] = metric.rename
         return name_map
-    
+
     def all_group_metrics(self) -> list[Metric]:
         metrics = []
         for group in self.groups:
             for metric in group.metrics:
                 metrics.append(metric)
         return metrics
-    
+
     def derived_metrics(self) -> list[Metric]:
-        return [metric for metric in self.all_group_metrics() if metric.derive is not None]
+        return [
+            metric for metric in self.all_group_metrics() if metric.derive is not None
+        ]
+
 
 def start_server(csv: str, config: Config, debug: bool = False):
-
     df = pd.read_csv(csv)
-    
+
     for metric in config.derived_metrics():
-        df = df.assign(**{metric.name:metric.derive})
+        df = df.assign(**{metric.name: metric.derive})
 
     app = Dash(title="QOR Explorer", external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-    non_hidden_group_names = [group.name for group in config.groups if not group.is_hidden]
+    non_hidden_group_names = [
+        group.name for group in config.groups if not group.is_hidden
+    ]
 
     metric_names_by_group = {}
     for group in config.groups:
@@ -81,13 +89,17 @@ def start_server(csv: str, config: Config, debug: bool = False):
         html.Div(
             [
                 html.Br(),
-                html.H1("QOR EXPLORER", style={"font-size": "4em", "color": " #0a4172"}),
+                html.H1(
+                    "QOR EXPLORER", style={"font-size": "4em", "color": " #0a4172"}
+                ),
                 html.H6("BY VERIEST", style={"margin-left": "0.5em"}),
                 html.Br(),
                 dash_table.DataTable(
                     id="select-run-table",
                     columns=[
-                        {"name": i, "id": i} for i in df.columns if i in  config.run_info_metric_names()
+                        {"name": i, "id": i}
+                        for i in df.columns
+                        if i in config.run_info_metric_names()
                     ],
                     data=df.sort_values(by=["Timestamp"], ascending=False).to_dict(
                         "records"
@@ -157,7 +169,12 @@ def start_server(csv: str, config: Config, debug: bool = False):
             key = None
             for i, cell in enumerate(row):
                 styled_cell = html.Div(
-                    cell, style={"text-align":"center", "font-size": "1.5em", "min-width": "100px"}
+                    cell,
+                    style={
+                        "text-align": "center",
+                        "font-size": "1.5em",
+                        "min-width": "100px",
+                    },
                 )
 
                 if i == 0:
@@ -181,8 +198,10 @@ def start_server(csv: str, config: Config, debug: bool = False):
                     else:
                         delta = round(value - base_value)
 
-                        if (delta > 0 and key not in reverse_metrics) or (delta < 0 and key in reverse_metrics):
-                            cell_style = {"color":"#f00"}
+                        if (delta > 0 and key not in reverse_metrics) or (
+                            delta < 0 and key in reverse_metrics
+                        ):
+                            cell_style = {"color": "#f00"}
                         else:
                             cell_style = {}
 
@@ -190,7 +209,7 @@ def start_server(csv: str, config: Config, debug: bool = False):
                             pct = abs(round(delta * 100 / base_value))
                         else:
                             pct = "Inf"
-                        
+
                         if abs(delta) >= 1000:
                             suffix = "k"
                             delta = round(delta / 1000.0)
@@ -203,7 +222,9 @@ def start_server(csv: str, config: Config, debug: bool = False):
 
                         fancy_cell = [
                             styled_cell,
-                            html.Div(f"{pct}%", style={"float":"right","color": "#888"}),
+                            html.Div(
+                                f"{pct}%", style={"float": "right", "color": "#888"}
+                            ),
                             html.Div(f"{delta_s}", style={"color": "#888"}),
                         ]
                         table_row.append(html.Td(fancy_cell, style=cell_style))
@@ -219,7 +240,9 @@ def start_server(csv: str, config: Config, debug: bool = False):
                 style={"width": "auto"},
             )
         ]
+
     app.run_server(debug=debug)
+
 
 def group_selectors(group_names):
     options = []
@@ -231,6 +254,7 @@ def group_selectors(group_names):
     return dbc.Checklist(
         options=options, value=[1], id="switches-input", switch=True, inline=True
     )
+
 
 def convert_str(s: str) -> any:
     try:
@@ -246,23 +270,25 @@ def convert_str(s: str) -> any:
     except:
         return s
 
+
 @click.command()
-@click.option('--csv', help='Name of CSV file to read')
-@click.option('--config', help='Name of config file to read')
-@click.option('--debug', is_flag=True, default=False, help='Run server in debug mode')
+@click.option("--csv", help="Name of CSV file to read")
+@click.option("--config", help="Name of config file to read")
+@click.option("--debug", is_flag=True, default=False, help="Run server in debug mode")
 def cli(csv, config, debug):
-    config_file = os.path.splitext(config)[0]
+    config_file = os.path.splitext(config)[0].replace("/", ".")
     try:
-        config_module = __import__(config_file)
-    except ImportError:
-        print(f'Error: could not import configuration from {config_file}.py')
+        config_module = importlib.import_module(config_file)
+    except ImportError as e:
+        print(f"Error: could not import configuration from {config_file}.py\n{e}")
         return
-    config_data = getattr(config_module, f'CONFIG', None)
+    config_data = getattr(config_module, f"CONFIG", None)
     if not config_data:
-        print(f'Error: {config_file}.py does not define a CONFIG variable')
+        print(f"Error: {config_file}.py does not define a CONFIG variable")
         return
 
     start_server(csv, config_data, debug)
+
 
 if __name__ == "__main__":
     cli()
